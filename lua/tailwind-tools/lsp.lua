@@ -129,6 +129,50 @@ local function sort_classes(ranges, bufnr, sync)
     client.request("@/tailwindCSS/sortSelection", params, handler, bufnr)
   end
 end
+---@param _ lsp.ResponseError?
+---@param params { message: string }
+local function handle_warn(_, params)
+  vim.notify(params.message, vim.log.levels.WARN, { title = "Tailwind CSS" })
+end
+
+---Clears all color extmarks and re-requests colors for the current buffer.
+local function handle_clear_colors()
+  for bufnr, _ in pairs(state.color.active_buffers) do
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_clear_namespace(bufnr, state.color_ns, 0, -1)
+    end
+  end
+
+  if state.color.enabled then
+    local client = get_tailwindcss()
+    if client then M.color_request(client, vim.api.nvim_get_current_buf()) end
+  end
+end
+
+---Fires initial color requests for all visible windows once the project is ready.
+local function handle_project_initialized()
+  state.project.initialized = true
+
+  if not state.color.enabled then return end
+
+  local client = get_tailwindcss()
+  if not client then return end
+
+  local seen = {}
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local bufnr = vim.api.nvim_win_get_buf(win)
+    if not seen[bufnr] and vim.api.nvim_buf_is_loaded(bufnr) then
+      seen[bufnr] = true
+      M.color_request(client, bufnr)
+    end
+  end
+end
+
+local function handle_project_reset()
+  state.project.initialized = false
+  handle_clear_colors()
+end
+
 ---@param server_config TailwindTools.ServerOption
 M.setup = function(server_config)
   local settings = { tailwindCSS = {} }
@@ -151,6 +195,13 @@ M.setup = function(server_config)
     settings = settings,
     on_attach = M.make_on_attach(server_config.on_attach),
     capabilities = capabilities,
+    handlers = {
+      ["@/tailwindCSS/clearColors"] = handle_clear_colors,
+      ["@/tailwindCSS/warn"] = handle_warn,
+      ["@/tailwindCSS/projectInitialized"] = handle_project_initialized,
+      ["@/tailwindCSS/projectReset"] = handle_project_reset,
+      ["@/tailwindCSS/projectsDestroyed"] = handle_project_reset,
+    },
   }
 
   vim.lsp.enable("tailwindcss")
@@ -192,7 +243,9 @@ M.on_attach = function(client, bufnr)
     end,
   })
 
-  if state.color.enabled then M.color_request(client, bufnr) end
+  if state.color.enabled and state.project.initialized then
+    M.color_request(client, bufnr)
+  end
 end
 
 ---@param client vim.lsp.Client | nil

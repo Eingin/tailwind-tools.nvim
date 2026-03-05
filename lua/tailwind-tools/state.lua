@@ -11,6 +11,9 @@ return {
     enabled = false,
     active_buffers = {},
   },
+  project = {
+    initialized = false,
+  },
   smart_increment = {
     active = false,
   },

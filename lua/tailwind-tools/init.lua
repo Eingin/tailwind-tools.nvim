@@ -33,6 +33,16 @@ local function register_autocmd()
     callback = lsp.on_attach_cb,
   })
 
+  autocmd("LspDetach", {
+    group = state.color_au,
+    callback = function(args)
+      local client = vim.lsp.get_client_by_id(args.data.client_id)
+      if client and client.name == "tailwindcss" then
+        state.project.initialized = false
+      end
+    end,
+  })
+
   autocmd({ "TextChanged", "TextChangedI" }, {
     group = state.conceal_au,
     callback = conceal.on_text_changed,
