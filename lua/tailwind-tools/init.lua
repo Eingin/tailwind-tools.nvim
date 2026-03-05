@@ -29,19 +29,22 @@ local function register_autocmd()
   local autocmd = vim.api.nvim_create_autocmd
 
   autocmd("LspAttach", {
-    group = vim.g.tailwind_tools.color_au,
+    group = state.color_au,
     callback = lsp.on_attach_cb,
   })
 
+  autocmd({ "TextChanged", "TextChangedI" }, {
+    group = state.conceal_au,
+    callback = conceal.on_text_changed,
+  })
+
   autocmd("BufEnter", {
-    group = vim.g.tailwind_tools.conceal_au,
-    callback = function()
-      if state.conceal.enabled then conceal.enable() end
-    end,
+    group = state.conceal_au,
+    callback = conceal.on_buf_enter,
   })
 
   autocmd("Colorscheme", {
-    group = vim.g.tailwind_tools.color_au,
+    group = state.color_au,
     callback = function()
       lsp.color_request(nil, 0)
       vim.api.nvim_set_hl(0, "TailwindConceal", config.options.conceal.highlight)
@@ -51,34 +54,46 @@ end
 
 ---@param options TailwindTools.Option
 M.setup = function(options)
-  config.options = vim.tbl_deep_extend("keep", options or {}, config.options)
+  if vim.fn.has("nvim-0.11") ~= 1 then
+    log.error("tailwind-tools.nvim requires Neovim 0.11 or higher")
+    return
+  end
+
+  options = options or {}
+
+  vim.validate("server", options.server, "table", true)
+  vim.validate("document_color", options.document_color, "table", true)
+  vim.validate("conceal", options.conceal, "table", true)
+  vim.validate("extension", options.extension, "table", true)
+  vim.validate("keymaps", options.keymaps, "table", true)
+
+  if options.document_color then
+    vim.validate("document_color.kind", options.document_color.kind, "string", true)
+    vim.validate("document_color.debounce", options.document_color.debounce, "number", true)
+    vim.validate("document_color.inline_symbol", options.document_color.inline_symbol, "string", true)
+  end
+
+  if options.server then
+    vim.validate("server.override", options.server.override, "boolean", true)
+    vim.validate("server.on_attach", options.server.on_attach, "function", true)
+    vim.validate("server.root_markers", options.server.root_markers, "table", true)
+    vim.validate("server.settings", options.server.settings, "table", true)
+  end
+
+  config.options = vim.tbl_deep_extend("keep", options, config.options)
 
   state.conceal.enabled = config.options.conceal.enabled
   state.color.enabled = config.options.document_color.enabled
 
-  if vim.version().minor < 10 and config.options.document_color.kind == "inline" then
-    log.warn(
-      "Neovim v0.10 is required for inline color hints, using fallback option."
-        .. ' Should use value "foreground" or "background" for document_color.kind'
-    )
-    config.options.document_color.kind = "background"
-  end
-
-  vim.g.tailwind_tools = {
-    color_ns = vim.api.nvim_create_namespace("tailwind_colors"),
-    color_au = vim.api.nvim_create_augroup("tailwind_colors", {}),
-    conceal_ns = vim.api.nvim_create_namespace("tailwind_conceal"),
-    conceal_au = vim.api.nvim_create_augroup("tailwind_conceal", {}),
-  }
+  vim.g.tailwind_tools = true
 
   vim.api.nvim_set_hl(0, "TailwindConceal", config.options.conceal.highlight)
 
   local server_opts = config.options.server
   local has_telescope, telescope = pcall(require, "telescope")
-  local has_lspconfig, lspconfig = pcall(require, "lspconfig")
 
   if has_telescope then telescope.load_extension("tailwind") end
-  if has_lspconfig and server_opts.override then lsp.setup(server_opts, lspconfig) end
+  if server_opts.override then lsp.setup(server_opts) end
   if config.options.keymaps.smart_increment.enabled then keymaps.set_smart_increment() end
 
   register_usercmd()

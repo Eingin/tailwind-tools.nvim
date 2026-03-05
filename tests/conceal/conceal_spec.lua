@@ -3,7 +3,12 @@ local state = require("tailwind-tools.state")
 local config = require("tailwind-tools.config")
 local get_extmarks = require("tests.common").get_extmarks
 
-local ns = vim.g.tailwind_tools.conceal_ns
+-- Ensure plugin is loaded before running tests
+if not vim.g.tailwind_tools then
+  require("tailwind-tools").setup({})
+end
+
+local ns = state.conceal_ns
 
 describe("conceal:", function()
   it("Should conceal all classes", function()

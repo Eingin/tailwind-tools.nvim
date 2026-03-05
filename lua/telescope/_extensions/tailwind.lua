@@ -15,7 +15,7 @@ local config = require("telescope.config").values
 local fg_prefixes = { "text", "border", "outline" }
 
 local function get_hl_kind(class_name)
-  for _, prefix in pairs(fg_prefixes) do
+  for _, prefix in ipairs(fg_prefixes) do
     if vim.startswith(class_name, prefix) then return "foreground" end
   end
 
@@ -38,7 +38,7 @@ local function utility_picker()
     entry_maker = function(entry)
       local highlight = "Normal"
 
-      for _, value in pairs(entry.value) do
+      for _, value in ipairs(entry.value) do
         if type(value) == "string" then
           local r, g, b = utils.extract_color(value)
 
@@ -105,7 +105,7 @@ local function class_picker()
   local filename = vim.api.nvim_buf_get_name(bufnr)
   local entries = {}
 
-  for _, range in pairs(class_ranges) do
+  for _, range in ipairs(class_ranges) do
     local s_row, s_col, e_row, e_col = unpack(range)
     local text = vim.api.nvim_buf_get_text(bufnr, s_row, s_col, e_row, e_col, {})
 

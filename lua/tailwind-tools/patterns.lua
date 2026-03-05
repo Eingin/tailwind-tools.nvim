@@ -13,7 +13,7 @@ local function byte_range_to_pos(b_start, b_end, bufnr)
 
   local s_row, s_col, e_row, e_col
 
-  for line, offset in pairs(line_offsets) do
+  for line, offset in ipairs(line_offsets) do
     local next_offset = line_offsets[line + 1]
 
     if not next_offset or b_start >= offset and b_start < next_offset then

@@ -1,6 +1,11 @@
 local assert = require("luassert")
 local utils = require("tests.common")
 
+-- Ensure plugin is loaded before running tests
+if not vim.g.tailwind_tools then
+  require("tailwind-tools").setup({})
+end
+
 -- NOTE: keymaps don't work in headless mode, so we use user commands instead for simulation
 
 local function increment() vim.cmd.TailwindIncrement() end

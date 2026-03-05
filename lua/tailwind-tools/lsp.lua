@@ -7,6 +7,24 @@ local config = require("tailwind-tools.config")
 local classes = require("tailwind-tools.classes")
 local filetypes = require("tailwind-tools.filetypes")
 
+local default_root_markers = {
+  "tailwind.config.js",
+  "tailwind.config.cjs",
+  "tailwind.config.mjs",
+  "tailwind.config.ts",
+  "assets/tailwind.config.js",
+  "assets/tailwind.config.cjs",
+  "assets/tailwind.config.mjs",
+  "assets/tailwind.config.ts",
+  "theme/static_src/tailwind.config.js",
+  "theme/static_src/tailwind.config.cjs",
+  "theme/static_src/tailwind.config.mjs",
+  "theme/static_src/tailwind.config.ts",
+  "app/assets/stylesheets/application.tailwind.css",
+  "app/assets/tailwind/application.css",
+  "package.json",
+}
+
 local color_events = {
   "BufEnter",
   "TextChanged",
@@ -17,9 +35,7 @@ local color_events = {
 
 ---@return vim.lsp.Client?
 local function get_tailwindcss()
-  ---@diagnostic disable-next-line: deprecated
-  local get_client = vim.lsp.get_clients or vim.lsp.get_active_clients
-  local clients = get_client({ name = "tailwindcss" })
+  local clients = vim.lsp.get_clients({ name = "tailwindcss" })
   return clients[1]
 end
 
@@ -31,7 +47,7 @@ local function set_extmark(bufnr, color)
   local b = math.floor(color.color.blue * 255)
   local hl_kind = config.options.document_color.kind
   local hl_group = utils.set_hl_from(r, g, b, hl_kind)
-  local namespace = vim.g.tailwind_tools.color_ns
+  local namespace = state.color_ns
   local start_row = color.range.start.line
   local start_col = color.range.start.character
   local opts = {}
@@ -50,22 +66,14 @@ local function set_extmark(bufnr, color)
   state.color.active_buffers[bufnr] = true
 end
 
+local debounce_timer = vim.uv.new_timer()
+
 ---@param bufnr number
 local function debounced_color_request(client, bufnr)
-  local timer = state.color.request_timer
-
-  if timer then
-    state.color.request_timer = nil
-    if not timer:is_closing() then
-      timer:stop()
-      timer:close()
-    end
-  end
-
-  state.color.request_timer = vim.defer_fn(
-    function() M.color_request(client, bufnr) end,
-    config.options.document_color.debounce
-  )
+  debounce_timer:stop()
+  debounce_timer:start(config.options.document_color.debounce, 0, vim.schedule_wrap(function()
+    M.color_request(client, bufnr)
+  end))
 end
 
 ---@param ranges { [integer]: number, delimiter?: { raw: string, pattern: string } }[]
@@ -79,7 +87,7 @@ local function sort_classes(ranges, bufnr, sync)
 
   local class_text = {}
 
-  for _, range in pairs(ranges) do
+  for _, range in ipairs(ranges) do
     local start_row, start_col, end_row, end_col = unpack(range)
     local text = vim.api.nvim_buf_get_text(bufnr, start_row, start_col, end_row, end_col, {})
     text = table.concat(text, "\n")
@@ -96,7 +104,7 @@ local function sort_classes(ranges, bufnr, sync)
     if result.error then return log.error(result.error) end
     if not result or not vim.api.nvim_buf_is_valid(bufnr) then return end
 
-    for i, edit in pairs(result.classLists) do
+    for i, edit in ipairs(result.classLists) do
       if ranges[i].delimiter then
         edit = table.concat(vim.split(edit, "%s+"), ranges[i].delimiter.raw)
       end
@@ -121,45 +129,31 @@ local function sort_classes(ranges, bufnr, sync)
     client.request("@/tailwindCSS/sortSelection", params, handler, bufnr)
   end
 end
----@module 'lspconfig.configs'
-
 ---@param server_config TailwindTools.ServerOption
----@param lspconfig { tailwindcss: lspconfig.Config }
-M.setup = function(server_config, lspconfig)
-  local conf = { settings = {} }
-  conf.on_attach = M.make_on_attach(server_config.on_attach)
-  conf.root_dir = server_config.root_dir or M.make_root_dir(lspconfig)
-
-  conf.settings.tailwindCSS = vim.tbl_get(server_config, "settings", "tailwindCSS") or {}
-  conf.settings.tailwindCSS =
-    vim.tbl_deep_extend("keep", conf.settings.tailwindCSS, server_config.settings)
-  conf.settings.tailwindCSS.includeLanguages = vim.tbl_extend(
+M.setup = function(server_config)
+  local settings = { tailwindCSS = {} }
+  settings.tailwindCSS = vim.tbl_get(server_config, "settings", "tailwindCSS") or {}
+  settings.tailwindCSS =
+    vim.tbl_deep_extend("keep", settings.tailwindCSS, server_config.settings or {})
+  settings.tailwindCSS.includeLanguages = vim.tbl_extend(
     "keep",
-    server_config.settings.includeLanguages or {},
+    server_config.settings and server_config.settings.includeLanguages or {},
     filetypes.get_server_map()
   )
 
-  conf.capabilities = vim.lsp.protocol.make_client_capabilities()
-  conf.capabilities.textDocument.colorProvider = {
-    dynamicRegistration = true,
+  local capabilities = vim.lsp.protocol.make_client_capabilities()
+  capabilities.textDocument.colorProvider = { dynamicRegistration = true }
+
+  vim.lsp.config["tailwindcss"] = {
+    cmd = { "tailwindcss-language-server", "--stdio" },
+    filetypes = filetypes.get_all(),
+    root_markers = server_config.root_markers or default_root_markers,
+    settings = settings,
+    on_attach = M.make_on_attach(server_config.on_attach),
+    capabilities = capabilities,
   }
 
-  lspconfig.tailwindcss.setup(conf)
-end
-
----@type fun(lspconfig: any)
----@return function(fname: string): string?
-M.make_root_dir = function(lspconfig)
-  return function(fname)
-    local root_files = lspconfig.util.insert_package_json({
-      "tailwind.config.{js,cjs,mjs,ts}",
-      "assets/tailwind.config.{js,cjs,mjs,ts}",
-      "theme/static_src/tailwind.config.{js,cjs,mjs,ts}",
-      "app/assets/stylesheets/application.tailwind.css",
-      "app/assets/tailwind/application.css",
-    }, "tailwindcss", fname)
-    return lspconfig.util.root_pattern(root_files)(fname)
-  end
+  vim.lsp.enable("tailwindcss")
 end
 
 ---@type fun(user_on_attach: function | nil)
@@ -186,7 +180,7 @@ end
 ---@param bufnr integer
 M.on_attach = function(client, bufnr)
   vim.api.nvim_create_autocmd(color_events, {
-    group = vim.g.tailwind_tools.color_au,
+    group = state.color_au,
     buffer = bufnr,
     callback = function(a)
       if not state.color.enabled then return end
@@ -215,9 +209,9 @@ M.color_request = function(client, bufnr)
 
     ---@type lsp.ColorInformation[]
     local colors = result
-    vim.api.nvim_buf_clear_namespace(bufnr, vim.g.tailwind_tools.color_ns, 0, -1)
+    vim.api.nvim_buf_clear_namespace(bufnr, state.color_ns, 0, -1)
 
-    for _, color in pairs(colors) do
+    for _, color in ipairs(colors) do
       local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1 -- Starts at 1
       local cursor_aligned = (state.conceal.enabled and cursor_line == color.range.start.line)
 
@@ -239,7 +233,7 @@ end
 M.disable_color = function()
   for bufnr, _ in pairs(state.color.active_buffers) do
     if vim.api.nvim_buf_is_valid(bufnr) then
-      vim.api.nvim_buf_clear_namespace(bufnr, vim.g.tailwind_tools.color_ns, 0, -1)
+      vim.api.nvim_buf_clear_namespace(bufnr, state.color_ns, 0, -1)
     end
   end
 

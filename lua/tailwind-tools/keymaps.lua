@@ -17,7 +17,7 @@ local units = config.options.keymaps.smart_increment.units
 local function make_lookup_table(tbl)
   local reverse = {}
 
-  for key, value in pairs(tbl.values) do
+  for key, value in ipairs(tbl.values) do
     reverse[value] = key
   end
 
@@ -57,7 +57,7 @@ local function find_range_at_cursor(cursor)
   local ranges = classes.get_ranges(0)
   local cursor_row = unpack(cursor)
 
-  for _, range in pairs(ranges) do
+  for _, range in ipairs(ranges) do
     local range_row = unpack(range)
     if range_row == cursor_row then return range end
   end
@@ -68,10 +68,10 @@ end
 local function find_best_handler(subline, lookup_tables)
   local handler
 
-  for _, lookup_table in pairs(lookup_tables) do
+  for _, lookup_table in ipairs(lookup_tables) do
     local start
 
-    for _, term in pairs(lookup_table.sorted) do
+    for _, term in ipairs(lookup_table.sorted) do
       if lookup_table.prefix then
         start = subline:find(lookup_table.prefix)
       else
@@ -114,7 +114,7 @@ local function make_step_fn(params)
     local match = handler.term
 
     if not match then
-      for _, term in pairs(lookup_table.sorted) do
+      for _, term in ipairs(lookup_table.sorted) do
         local col = subline:sub(handler.start):find(term)
 
         if col then
@@ -163,7 +163,7 @@ M.set_smart_increment = function()
 
   local lookup_tables = {}
 
-  for _, value in pairs(units) do
+  for _, value in ipairs(units) do
     lookup_tables[#lookup_tables + 1] = make_lookup_table(value)
   end
 

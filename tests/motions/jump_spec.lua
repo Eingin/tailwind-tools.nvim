@@ -1,5 +1,10 @@
 local utils = require("tests.common")
 
+-- Ensure plugin is loaded before running tests
+if not vim.g.tailwind_tools then
+  require("tailwind-tools").setup({})
+end
+
 describe("jump motion:", function()
   vim.cmd.edit("tests/motions/index.html")
 

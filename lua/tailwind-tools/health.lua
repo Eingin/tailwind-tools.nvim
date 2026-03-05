@@ -35,7 +35,6 @@ M.check = function()
 
   health.start("Plugin dependencies (optional)")
 
-  check_plugin("nvim-lspconfig", "lspconfig")
   check_plugin("telescope.nvim", "telescope")
 
   local has_node_health, node_health = pcall(require, "provider.node.health")

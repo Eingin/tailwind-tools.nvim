@@ -1,7 +1,7 @@
 -- minimal init.lua
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
     "git",
     "clone",
@@ -16,14 +16,25 @@ vim.opt.rtp:prepend(lazypath)
 vim.o.swapfile = false
 
 require("lazy").setup({
-  { "nvim-lua/plenary.nvim", cmd = "PlenaryBustedDirectory" },
+  { "nvim-lua/plenary.nvim" },
+  {
+    "nvim-treesitter/nvim-treesitter",
+    build = ":TSUpdate",
+    config = function()
+      require("nvim-treesitter.configs").setup({
+        ensure_installed = { "html", "css", "javascript", "typescript", "tsx", "templ" },
+        sync_install = true,
+        highlight = { enable = true },
+      })
+    end,
+  },
+  { "nvim-telescope/telescope.nvim" },
   {
     dir = "./",
-    dependencies = {
-      "nvim-treesitter/nvim-treesitter",
-      "nvim-telescope/telescope.nvim",
-      "neovim/nvim-lspconfig",
-    },
+    priority = 1000,
     config = function() require("tailwind-tools").setup({}) end,
   },
+}, {
+  defaults = { lazy = false },
 })
+

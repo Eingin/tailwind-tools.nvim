@@ -3,6 +3,11 @@ local M = {}
 local assert = require("luassert")
 local classes = require("tailwind-tools.classes")
 
+-- Ensure plugin is loaded before running tests
+if not vim.g.tailwind_tools then
+  require("tailwind-tools").setup({})
+end
+
 ---@class QueryTestSpec
 ---@field name string
 ---@field provider "treesitter" | "luapattern"

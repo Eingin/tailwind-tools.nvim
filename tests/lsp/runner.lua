@@ -4,6 +4,11 @@ local state = require("tailwind-tools.state")
 local config = require("tailwind-tools.config")
 local get_extmarks = require("tests.common").get_extmarks
 
+-- Ensure plugin is loaded before running tests
+if not vim.g.tailwind_tools then
+  require("tailwind-tools").setup({})
+end
+
 local M = {}
 
 ---@class LspTestSpec
@@ -43,7 +48,7 @@ M.test = function(spec)
   end)
 
   describe(("color (%s):"):format(spec.id), function()
-    local ns = vim.g.tailwind_tools.color_ns
+    local ns = require("tailwind-tools.state").color_ns
 
     it("Should show inline colors", function()
       config.options.document_color.kind = "inline"

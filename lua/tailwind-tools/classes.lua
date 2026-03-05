@@ -2,7 +2,7 @@ local M = {}
 
 local patterns = require("tailwind-tools.patterns")
 local filetypes = require("tailwind-tools.filetypes")
-local tresitter = require("tailwind-tools.treesitter")
+local treesitter = require("tailwind-tools.treesitter")
 
 ---@class TailwindTools.ClassFilter
 ---@field sortable? boolean
@@ -17,13 +17,13 @@ M.get_ranges = function(bufnr, filters)
 
   filters = filters or {}
 
-  for _, pattern in pairs(pattern_list) do
+  for _, pattern in ipairs(pattern_list) do
     local ranges = patterns.find_class_ranges(bufnr, pattern)
     vim.list_extend(results, ranges)
   end
 
   if filetypes.has_queries(ft) then
-    local ranges = tresitter.find_class_ranges(bufnr, ft, filters)
+    local ranges = treesitter.find_class_ranges(bufnr, ft, filters)
     vim.list_extend(results, ranges)
   end
 

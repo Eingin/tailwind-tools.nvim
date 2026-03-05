@@ -19,7 +19,7 @@ M.set_hl_from = function(red, green, blue, style)
     opts = { fg = "#" .. color }
   end
 
-  if not vim.api.nvim_get_hl(0, { name = hl_name })[1] then
+  if vim.tbl_isempty(vim.api.nvim_get_hl(0, { name = hl_name })) then
     vim.api.nvim_set_hl(0, hl_name, opts)
   end
 

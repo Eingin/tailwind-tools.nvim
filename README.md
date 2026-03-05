@@ -37,7 +37,7 @@ It currently provides the following features:
 
 ## Prerequisites
 
-- Neovim v0.9 or higher (v0.10 is recommended)
+- Neovim v0.11 or higher
 - [tailwindcss-language-server](https://github.com/tailwindlabs/tailwindcss-intellisense/tree/master/packages/tailwindcss-language-server) >= `v0.0.14` (can be installed using [Mason](https://github.com/williamboman/mason.nvim) or npm)
 - `html`, `css`, `tsx` and other language Treesitter grammars (using [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter))
 - Neovim [node-client](https://www.npmjs.com/package/neovim) (using npm)
@@ -55,7 +55,6 @@ return {
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
     "nvim-telescope/telescope.nvim", -- optional
-    "neovim/nvim-lspconfig", -- optional
   },
   opts = {} -- your configuration
 }
@@ -71,10 +70,7 @@ require("tailwind-tools").setup({
 
 ## Configuration
 
-> [!IMPORTANT]
-> Neovim v0.10 is required for vscode-like inline color hints.
-
-By default, the plugin automatically configures tailwindcss-language-server using [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig), if it is installed. Make sure you do not set up the server elsewhere.
+By default, the plugin automatically configures tailwindcss-language-server using Neovim's native LSP API (`vim.lsp.config`). Make sure you do not set up the server elsewhere.
 
 Here is the default configuration:
 
@@ -93,7 +89,7 @@ Here is the default configuration:
       -- },
     },
     on_attach = function(client, bufnr) end, -- callback executed when the language server gets attached to a buffer
-    root_dir = function(fname) end, -- overrides the default function for resolving the root directory
+    root_markers = { "tailwind.config.js", "package.json" }, -- files that mark the project root
   },
   document_color = {
     enabled = true, -- can be toggled by commands
