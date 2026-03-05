@@ -1,4 +1,5 @@
 > [!IMPORTANT]
+> This is a **fork** of [luckasRanarison/tailwind-tools.nvim](https://github.com/luckasRanarison/tailwind-tools.nvim) with additional improvements. See [Fork Changes](#fork-changes) for details.
 > This plugin is a community project and is **NOT** officially supported by [Tailwind Labs](https://github.com/tailwindlabs).
 
 # tailwind-tools.nvim
@@ -8,6 +9,7 @@ An unofficial [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) integr
 ![preview](https://github.com/luckasRanarison/tailwind-tools.nvim/assets/101930730/cb1c0508-8375-474f-9078-2842fb62e0b7)
 
 ## Contents
+- [Fork Changes](#fork-changes)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -17,6 +19,36 @@ An unofficial [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) integr
 - [Extension](#extension)
 - [Related projects](#related-projects)
 - [Contributing](#contributing)
+
+## Fork Changes
+
+This fork requires **Neovim 0.11+** and drops the `nvim-lspconfig` dependency in favor of the native `vim.lsp.config` / `vim.lsp.enable` API.
+
+### Neovim 0.11 modernization
+
+- Uses `vim.lsp.config` and `vim.lsp.enable` for LSP server setup (no `nvim-lspconfig` required)
+- Replaces `vim.loop` with `vim.uv`, `vim.lsp.get_active_clients` with `vim.lsp.get_clients`
+- Uses the new `vim.validate` positional signature
+- Replaces `vim.g` state storage with a Lua module to avoid msgpack serialization on hot paths
+- Replaces `vim.defer_fn` debounce with a single persistent `vim.uv.new_timer()`
+
+### LSP notification handlers
+
+The [tailwindcss-language-server](https://github.com/tailwindlabs/tailwindcss-intellisense) sends several custom notifications that the original plugin ignores. This fork handles them:
+
+| Notification | What this fork does |
+|---|---|
+| `@/tailwindCSS/projectInitialized` | Fires the initial color request only once the Tailwind project is actually ready, fixing a race condition where colors would not appear until the first text edit |
+| `@/tailwindCSS/projectReset` | Clears project state and color extmarks when the project reloads (e.g., after a config error) |
+| `@/tailwindCSS/projectsDestroyed` | Same as `projectReset`; handles full server disposal/restart |
+| `@/tailwindCSS/clearColors` | Clears stale color extmarks and re-requests colors when server settings change |
+| `@/tailwindCSS/warn` | Displays server warnings (e.g., config load failures) via `vim.notify` instead of silently ignoring them |
+
+### Bug fixes
+
+- Fixed highlight cache guard in `utils.lua` (`nvim_get_hl` returns a dict, not an array — the cache was a no-op)
+- Fixed `tresitter` typo in `classes.lua`
+- Replaced `pairs()` with `ipairs()` on array tables throughout
 
 ## Features
 
