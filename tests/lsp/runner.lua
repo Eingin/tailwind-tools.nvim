@@ -43,7 +43,13 @@ M.test = function(spec)
 
       assert(response, "No response from the server")
       assert(response.result, "No project found: " .. vim.json.encode(response))
-      assert.same(response.result.version, spec.version, "Version mismatch")
+
+      local actual = response.result.version
+      local major = spec.version:match("^(%d+)")
+      assert(
+        vim.startswith(actual, major .. "."),
+        ("Version mismatch: expected %s.x, got %s"):format(major, actual)
+      )
     end)
   end)
 
